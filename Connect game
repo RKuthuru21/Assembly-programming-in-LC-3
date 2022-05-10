@@ -1,0 +1,976 @@
+; Author: Rithvik Kuthuru
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; The University of Texas at Austin 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; EE306-Spring2022
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Professor Nina Telang 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; 2022 April 28th 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Lab8; Extra credit assingment connect 4, basically connect 4 is a game where if 
+;a player connects their coin (in this program its x or o) either in a row diganally
+;or horizontally they will win the game. Also an invalid character such as "A" will 
+;result in a invalid move. Also a player can't play a spot choosen in the previous 
+;round by the opoent. 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; 	description: 	Connect 4 game starter code		;
+;								;
+; 								;
+;			connect4.asm				;
+;								;	
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+.ORIG x3000
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;	Main Program						;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	JSR INIT
+ROUND
+	JSR DISPLAY_BOARD
+	JSR GET_MOVE
+	JSR UPDATE_BOARD
+	JSR UPDATE_STATE
+
+	ADD R6, R6, #0
+	BRz ROUND
+
+	JSR DISPLAY_BOARD
+	JSR GAME_OVER
+
+	HALT
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;	Functions & Constants!!!				;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;	DISPLAY_TURN						;
+;	description:	Displays the appropriate prompt.	;
+;	inputs:		None!					;
+;	outputs:	None!					;
+;	assumptions:	TURN is set appropriately!		;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+DISPLAY_TURN
+	ST R0, DT_R0
+	ST R7, DT_R7
+
+	LD R0, TURN
+	ADD R0, R0, #-1
+	BRp DT_P2
+	LEA R0, DT_P1_PROMPT
+	PUTS
+	BRnzp DT_DONE
+DT_P2
+	LEA R0, DT_P2_PROMPT
+	PUTS
+
+DT_DONE
+
+	LD R0, DT_R0
+	LD R7, DT_R7
+
+	RET
+DT_P1_PROMPT	.STRINGZ 	"Player 1, choose a column: "
+DT_P2_PROMPT	.STRINGZ	"Player 2, choose a column: "
+DT_R0		.BLKW	x1
+DT_R7		.BLKW	x1
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;	GET_MOVE						;
+;	description:	gets a column from the user.		;
+;			also checks whether the move is valid,	;
+;			or not, by calling the CHECK_VALID 	;
+;			subroutine!				;
+;	inputs:		None!					;
+;	outputs:	R6 has the user entered column number!	;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+GET_MOVE
+	ST R0, GM_R0
+	ST R7, GM_R7
+
+GM_REPEAT
+	JSR DISPLAY_TURN
+	GETC
+	OUT
+	JSR CHECK_VALID
+	LD R0, ASCII_NEWLINE
+	OUT
+
+	ADD R6, R6, #0
+	BRp GM_VALID
+
+	LEA R0, GM_INVALID_PROMPT
+	PUTS
+	LD R0, ASCII_NEWLINE
+	OUT
+	BRnzp GM_REPEAT
+
+GM_VALID
+
+	LD R0, GM_R0
+	LD R7, GM_R7
+
+	RET
+GM_INVALID_PROMPT 	.stringz "Invalid move. Try again."
+GM_R0			.blkw	x1
+GM_R7			.blkw	x1
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;	UPDATE_BOARD						;
+;	description:	updates the game board with the last 	;
+;			move!					;
+;	inputs:		R6 has the column for last move.	;
+;	outputs:	R5 has the row for last move.		;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+UPDATE_BOARD
+	ST R1, UP_R1
+	ST R2, UP_R2
+	ST R3, UP_R3
+	ST R4, UP_R4
+	ST R6, UP_R6
+	ST R7, UP_R7
+
+	; clear R5
+	AND R5, R5, #0
+	ADD R5, R5, #6
+
+	LEA R4, ROW6
+	
+UB_NEXT_LEVEL
+	ADD R3, R4, R6
+
+	LDR R1, R3, #-1
+	LD R2, ASCII_NEGHYP
+
+	ADD R1, R1, R2
+	BRz UB_LEVEL_FOUND
+
+	ADD R4, R4, #-7
+	ADD R5, R5, #-1
+	BRnzp UB_NEXT_LEVEL
+
+UB_LEVEL_FOUND
+	LD R4, TURN
+	ADD R4, R4, #-1
+	BRp UB_P2
+
+	LD R4, ASCII_O
+	STR R4, R3, #-1
+
+	BRnzp UB_DONE
+UB_P2
+	LD R4, ASCII_X
+	STR R4, R3, #-1
+
+UB_DONE		
+
+	LD R1, UP_R1
+	LD R2, UP_R2
+	LD R3, UP_R3
+	LD R4, UP_R4
+	LD R6, UP_R6
+	LD R7, UP_R7
+
+	RET
+ASCII_X	.fill	x0058
+ASCII_O	.fill	x004f
+UP_R1	.blkw	x1
+UP_R2	.blkw	x1
+UP_R3	.blkw	x1
+UP_R4	.blkw	x1
+UP_R5	.blkw	x1
+UP_R6	.blkw	x1
+UP_R7	.blkw	x1
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;	CHANGE_TURN						;
+;	description:	changes the turn by updating TURN!	;
+;	inputs:		none!					;
+;	outputs:	none!					;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+CHANGE_TURN
+	ST R0, CT_R0
+	ST R1, CT_R1
+	ST R7, CT_R7
+
+	LD R0, TURN
+	ADD R1, R0, #-1
+	BRz CT_TURN_P2
+
+	ST R1, TURN
+	BRnzp CT_DONE
+
+CT_TURN_P2
+	ADD R0, R0, #1
+	ST R0, TURN
+
+CT_DONE
+	LD R0, CT_R0
+	LD R1, CT_R1
+	LD R7, CT_R7
+
+	RET
+CT_R0	.blkw	x1
+CT_R1	.blkw	x1
+CT_R7	.blkw	x1
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;	CHECK_WINNER						;
+;	description:	checks if the last move resulted in a	;
+;			win or not!				;
+;	inputs:		R6 has the column of last move.		;
+;			R5 has the row of last move.		;
+;	outputs:	R4 has  0, if not winning move,		;
+;				1, otherwise.			;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+CHECK_WINNER
+	ST R5, CW_R5
+	ST R6, CW_R6
+	ST R7, CW_R7
+
+	AND R4, R4, #0
+	
+	JSR CHECK_HORIZONTAL
+	ADD R4, R4, #0
+	BRp CW_DONE
+
+	JSR CHECK_VERTICAL
+	ADD R4, R4, #0
+	BRp CW_DONE
+
+	JSR CHECK_DIAGONALS
+
+CW_DONE
+
+	LD R5, CW_R5
+	LD R6, CW_R6
+	LD R7, CW_R7
+
+	RET
+CW_R5	.blkw	x1
+CW_R6	.blkw	x1
+CW_R7	.blkw	x1
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;	UPDATE_STATE						;
+;	description:	updates the state of the game by 	;
+;			checking the board. i.e. tries to figure;
+;			out whether the last move ended the game;
+; 			or not! if not updates the TURN! also	;
+;			updates the WINNER if there is a winner!;
+;	inputs:		R6 has the column of last move.		;
+;			R5 has the row of last move.		;
+;	outputs:	R6 has  1, if the game is over,		;
+;				0, otherwise.			;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+UPDATE_STATE
+	ST R0, US_R0
+	ST R1, US_R1
+	ST R4, US_R4
+	ST R7, US_R7
+	
+	; checking if the last move resulted in a win or not!
+	JSR CHECK_WINNER
+	
+	ADD R4, R4, #0
+	BRp US_OVER
+	
+	; checking if the board is full or not!
+	AND R6, R6, #0
+		
+	LD R0, NBR_FILLED
+	ADD R0, R0, #1
+	ST R0, NBR_FILLED
+
+	LD R1, MAX_FILLED
+	ADD R1, R0, R1
+	BRz US_TIE
+
+US_NOT_OVER
+	JSR CHANGE_TURN
+	BRnzp US_DONE
+
+US_OVER
+	ADD R6, R6, #1
+	LD R0, TURN
+	ST R0, WINNER
+	BRnzp US_DONE
+
+US_TIE
+	ADD R6, R6, #1
+
+US_DONE
+	LD R0, US_R0
+	LD R1, US_R1
+	LD R4, US_R4
+	LD R7, US_R7
+
+	RET
+NBR_FILLED	.fill	#0
+MAX_FILLED	.fill	#-36
+US_R0		.blkw	x1
+US_R1		.blkw	x1
+US_R4		.blkw	x1
+US_R7		.blkw	x1
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;	INIT							;
+;	description:	simply sets the BOARD_PTR appropriately!;
+;	inputs:		none!					;
+;	outputs:	none!					;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+INIT
+	ST R0, I_R0
+	ST R7, I_R7
+
+	LEA R0, ROW1
+	ST R0, BOARD_PTR
+
+	LD R0, I_R0
+	LD R7, I_R7
+
+	RET
+I_R0	.blkw	x1
+I_R7	.blkw	x1
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;	Global Constants!!!					;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+ASCII_SPACE	    .fill		x0020				;
+ASCII_NEWLINE	.fill		x000A				;
+TURN		    .fill		x1				;
+WINNER		    .fill		x0				;
+								;
+ASCII_OFFSET	.fill		x-0030				;
+ASCII_NEGONE	.fill		x-0031				;
+ASCII_NEGSIX	.fill		x-0036				;
+ASCII_NEGHYP	.fill	 	x-002d				;
+								;
+ROW1		.stringz	"------"			;
+ROW2		.stringz	"------"			;
+ROW3		.stringz	"------"			;
+ROW4		.stringz	"------"			;
+ROW5		.stringz	"------"			;
+ROW6		.stringz	"------"			;
+
+; Author: Rithvik Kuthuru
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; The University of Texas at Austin 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; EE306-Spring2022
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Professor Nina Telang 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; 2022 April 28th 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;	DISPLAY_BOARD						;
+;	description:	Displays the board.			;
+;	inputs:		None!					;
+;	outputs:	None!					;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;This subroutine displays the current status of the board. The initial state of the 
+;;;;;board, and an example of the state of board while being played are shown in 
+;;;;;previous sections.;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+DISPLAY_BOARD
+	ST R0, PTRDISPB_R0
+	ST R7, PTRDISPB_R7
+
+Display_Reg1
+	LEA	R1, ROW1  ; basically checks/loads the display board 
+Line1 	LDR	R0,R1,#0  ; this part loads r1 into r0 
+	OUT           ; output to console 
+	ADD	R0,R0,#0  ; basically add 0 to r0 to clear 
+	BRz	Display_Reg2   ; checks the other parts of display baord 
+	LD	R0,ASCII_SPACE ;Ascii space is from starter code 
+	OUT
+	ADD	R1,R1,#1
+	BRnzp	Line1 ;loops backs if line 1 still has something 
+	;;;;;;;;;;;;;;;and only exits when clear and ready 
+
+Display_Reg2	LD	R0, ASCII_NEWLINE ;;load ascii newline from starter code into r0 
+	OUT ;output to console 
+	LEA	R1, ROW2 ;check row2 of board 
+LINE2 	LDR	R0,R1,#0 
+	OUT ;output to console or board 
+	ADD	R0,R0,#0 ;add 0 to r0 to clear 
+	BRz	Display_Reg3 ;if nothing is present in this part of the board branch to next 
+	LD	R0, ASCII_SPACE ;ascii space is from starter code 
+	OUT ;output to board 
+	ADD	R1,R1,#1
+	BRnzp	LINE2 ;branch back to begin if board is not ready 
+
+Display_Reg3 LD	R0, ASCII_NEWLINE ;load into r0 ascii new line from starter code 
+	OUT ;output to display/console 
+	LEA	R1, ROW3 ; loads row3 into register 1 
+Line3	LDR	R0,R1,#0 ;check the 3line of the board 
+	OUT ;output to console 
+	ADD	R0,R0,#0 ;add 0 to r0 to clear this part of the baord or the contents held in it 
+	BRz	Display_Reg4 ;if board has nothing branch to next 
+	LD	R0, ASCII_SPACE  ;loads r0 with a ascii spcae, from starter code 
+	OUT ;output to board or console 
+	ADD	R1,R1,#1 
+	BRnzp	Line3 ;branch back if not empty board/console 
+	
+Display_Reg4	LD	R0,ASCII_NEWLINE ;load ascii new line from starter code into r0 
+	OUT ;output to dispaly or console 
+	LEA	R1, ROW4 ;load r1 into the row4 of board 
+	
+	;;;;^^^^ basically the same is done for the rest of this segement of the program,
+;basically checking every line of the board or spots to see if its clear and ready for
+;for the game to start:;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+Line4 	LDR	R0,R1,#0
+	OUT
+	ADD	R0,R0,#0
+	BRz	Display_Reg5
+	LD	R0,ASCII_SPACE 
+	OUT
+	ADD	R1,R1,#1
+	BRnzp	Line4
+Display_Reg5	LD	R0,ASCII_NEWLINE
+	OUT
+	LEA	R1, ROW5
+Line5 	LDR	R0,R1,#0
+	OUT
+	ADD	R0,R0,#0
+	BRz	Display_Reg6
+	LD	R0,ASCII_SPACE 
+	OUT
+	ADD	R1,R1,#1
+	BRnzp	Line5
+
+Display_Reg6	LD	R0,ASCII_NEWLINE
+	OUT
+	LEA	R1, ROW6       ; loads ROW 6
+Line6 	LDR	R0,R1,#0       ; loads R1 into R0
+	OUT
+	ADD	R0,R0,#0          
+	BRz	StopDisplay
+	LD	R0,ASCII_SPACE 
+	OUT
+	ADD	R1,R1,#1
+	BRnzp	Line6
+
+StopDisplay	LD	R0,ASCII_NEWLINE
+	OUT
+	LD R0, PTRDISPB_R0
+	LD R7, PTRDISPB_R7
+
+	RET
+PTRDISPB_R0	.blkw	1
+PTRDISPB_R7     .blkw	1
+
+;;;;^^^^ basically the same is done for the rest of this segement of the program,
+;basically checking every line of the board or spots to see if its clear and ready for
+;for the game to start:;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;	GAME_OVER						;
+;	description:	checks WINNER and outputs the proper	;
+;			message!				;
+;	inputs:		none!					;
+;	outputs:	none!					;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;This routine checks the winner and outputs the proper message.;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+;throught this part of the code, the program checks to see if a player tied 4 times 
+;in a horizontal or vertical. Then output to conosle proper message. 
+
+GAME_OVER
+	ST	R7,PTRSTRR7 ;reserve 1 space 
+	LD	R1,WINNER ;load the player 1 or 2, when won game 
+	ADD	R1,R1,#-1 
+	BRz	DWGAME2 
+	BRn	DWGAME3
+
+DONEWGAME1
+	LEA	R0,PLAYER2W
+	PUTS ;output player 2 won 
+	BRnzp	DONEWGAME
+
+DWGAME2
+	LEA	R0,PLAYER1W
+	PUTS  ;output player 1 won 
+	BRnzp	DONEWGAME
+
+DWGAME3
+	LEA	R0,KNOTCHED
+	PUTS ;output only when there a tie, if both players tie at the same time 
+
+DONEWGAME
+	LD	R7,PTRSTRR7
+	RET
+PTRSTRR7	.blkw	1
+PLAYER1W	.stringz	"Player 1 Wins."  ;output to console under board 
+PLAYER2W	.stringz	"Player 2 Wins." ;output to console under board 
+KNOTCHED	.stringz	"There is a tie."
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;	CHECK_VALID						;
+;	description:	checks whether a move is valid or not!	;
+;	inputs:		R0 has the ASCII value of the move!	;
+;	outputs:	R6 has:	0, if invalid move,		;
+;				decimal col. val., if valid.    ;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;This routine checks to see if the move is valid or not.  
+;;;Input: R0 has the ASCII value of the move. 
+;;;;;Output: R6 has a 0 if the move is invalid, and the decimal column value if valid. 
+;;;;The description of valid and invalid moves is given in a previous section.;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;in this part of the code, if a character other than a O or X is entered return mesage 
+;invalid move until player does right move. Also invalid is displayed when a player selects 
+;a spot tthat been taken up by openenet. 
+ 
+CHECK_VALID
+	ST	R0,CValid_R0
+	ST	R1,CValid_R1
+	ST	R2,CValid_R2
+	ST	R3,CValid_R3
+	ST	R7,CValid_R7
+	
+	LD	R1,ASCII_NEGONE		;basically check if number is between 1 and 6 
+	LD	R2,ASCII_NEGSIX      
+	ADD	R1,R0,R1
+	BRn	NVALID
+	ADD	R2,R0,R2
+	BRp	NVALID
+	
+	LEA	R1,ROW1			; basically check if column is filled
+	LD	R3,ASCII_OFFSET
+	ADD	R3,R0,R3
+	ADD	R1,R1,R3
+	ADD	R1,R1,#-1
+	LDR	R2,R1,#0
+	LD	R3,ASCII_NEGHYP
+	ADD	R2,R2,R3
+	BRnp	NVALID
+
+YVALID
+	LD	R3,ASCII_OFFSET
+	ADD	R6,R0,R3
+	BRnzp	LASTCHECK
+
+
+NVALID	
+	AND	R6,R6,0
+	BRnzp	LASTCHECK
+
+LASTCHECK
+	LD	R0,CValid_R0
+	LD	R1,CValid_R1
+	LD	R2,CValid_R2
+	LD	R3,CValid_R3
+	LD	R7,CValid_R7
+
+	RET
+CValid_R0 .blkw	1
+CValid_R1  .blkw 1
+CValid_R2 .blkw 1
+CValid_R3 .blkw	1
+CValid_R7 .blkw	1
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;USE THE FOLLOWING TO ACCESS THE BOARD!!!;;;;;;;;;;;;;;;;;;
+;;;;;IT POINTS TO THE FIRST ELEMENT OF ROW1 (TOP-MOST ROW)!!!;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+BOARD_PTR	.blkw	1
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;	CHECK_HORIZONTAL					;
+;	description:	horizontal check.			;
+;	inputs:		R6 has the column of the last move.	;
+;			R5 has the row of the last move.	;
+;	outputs:	R4 has  0, if not winning move,		;
+;				1, otherwise.			;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;These routines do the horizontal check, vertical check, and diagonal checks 
+;;;;respectively. For each of these routines: 
+;;;;Inputs: R6 is the column of the last move, R5 is the row of the last move. 
+;;;;Outputs: R4 has 0 if not winning move, or 1 if winning move. ;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+CHECK_HORIZONTAL
+	ST	R0,CHECKVALH_R0  ;stores R0 into variables
+	ST	R1,CHECKVALH_R1  
+	ST	R2,CHECKVALH_R2
+	ST	R3,CHECKVALH_R3
+	ST	R5,CHECKVALH_R5  
+	ST	R6,CHECKVALH_R6  
+	ST	R7,CHECKVALH_R7  
+
+	AND	R1,R1,#0
+	ADD	R1,R1,#-3
+	LD	R2,BOARD_PTR
+	ADD	R5,R5,#-1
+FINDROW1	BRz	LINE7
+	ADD	R2,R2,#7
+	ADD	R5,R5,#-1
+	BRnzp	FINDROW1
+
+LINE7	ADD	R2,R2,R6
+	ADD	R2,R2,#-1
+	LDR	R3,R2,#0
+	NOT	R3,R3		
+	ADD	R3,R3,#1
+
+	ADD	R7,R2,#0	;basically checks tokens to right of last move
+LINE8	LDR	R4,R7,#1
+	ADD	R4,R4,R3
+	BRnp	PATT
+	ADD	R7,R7,#1
+	ADD	R1,R1,#1
+	BRz	HORIZMATCH  ;basically  branch for horizontal win
+	BRnzp	LINE8
+PATT
+	ADD	R7,R2,#0	; basically checks tokens to left of last move
+LINE9	LDR	R4,R7,#-1
+	ADD	R4,R4,R3
+	BRnp	HORIZNOMATCH
+	ADD	R7,R7,#-1
+	ADD	R1,R1,#1
+	BRz	HORIZMATCH
+	BRnzp	LINE9
+
+
+HORIZNOMATCH
+	AND	R4,R4,#0
+	BRnzp	FINCHHORIZ  ; basically checks horizontal
+
+HORIZMATCH
+	AND	R4,R4,#0 
+	ADD	R4,R4,#1	
+
+FINCHHORIZ
+	LD	R0,CHECKVALH_R0  ; basically loads variables into registers 
+	LD	R1,CHECKVALH_R1
+	LD	R2,CHECKVALH_R2
+	LD	R3,CHECKVALH_R3
+	LD	R5,CHECKVALH_R5
+	LD	R6,CHECKVALH_R6
+	LD	R7,CHECKVALH_R7
+	RET
+CHECKVALH_R0	.blkw	1
+CHECKVALH_R1	.blkw	1
+CHECKVALH_R2	.blkw	1
+CHECKVALH_R3	.blkw	1
+CHECKVALH_R5	.blkw	1
+CHECKVALH_R6	.blkw	1
+CHECKVALH_R7	.blkw	1
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;	CHECK_VERTICAL						;
+;	description:	vertical check.				;
+;	inputs:		R6 has the column of the last move.	;
+;			R5 has the row of the last move.	;
+;	outputs:	R4 has  0, if not winning move,		;
+;				1, otherwise.			;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;These routines do the horizontal check, vertical check, and diagonal checks 
+;;;;respectively. For each of these routines: 
+;;;;Inputs: R6 is the column of the last move, R5 is the row of the last move. 
+;;;;Outputs: R4 has 0 if not winning move, or 1 if winning move. ;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+CHECK_VERTICAL
+	ST	R0,CHECKVALVER_R0 ; basically  stores Registers into variables 
+	ST	R1,CHECKVALVER_R1
+	ST	R2,CHECKVALVER_R2
+	ST	R3,CHECKVALVER_R3
+	ST	R5,CHECKVALVER_R5
+	ST	R6,CHECKVALVER_R6
+	ST	R7,CHECKVALVER_R7
+
+	AND	R1,R1,#0
+	ADD	R1,R1,#-3
+	LD	R2,BOARD_PTR
+	ADD	R5,R5,#-1
+GETROWER1
+	BRz	LINE10
+	ADD	R2,R2,#7
+	ADD	R5,R5,#-1
+	BRnzp	GETROWER1
+
+LINE10	ADD	R2,R2,R6
+	ADD	R2,R2,#-1
+	LDR	R3,R2,#0
+	NOT	R3,R3		
+	ADD	R3,R3,#1
+;	
+	ADD	R7,R2,#0	; basically checks tokens below last move
+LINE11	LDR	R4,R7,#7
+	ADD	R4,R4,R3
+	BRnp	PATT2
+	ADD	R7,R7,#7
+	ADD	R1,R1,#1
+	BRz	VERTICALWON
+	BRnzp	LINE11
+PATT2
+	ADD	R7,R2,#0	; basically checks tokens above last move
+LINE12	LDR	R4,R7,#-7
+	ADD	R4,R4,R3
+	BRnp	VERTICALNWON  
+	ADD	R7,R7,#-7
+	ADD	R1,R1,#1   ; basically vertical no win when the consecutive characters are not same 
+	BRz	VERTICALWON
+	BRnzp	LINE12
+VERTICALNWON
+	AND	R4,R4,#0
+	BRnzp	AGAINCVERT
+
+VERTICALWON
+	AND	R4,R4,#0
+	ADD	R4,R4,#1	
+
+AGAINCVERT
+	LD	R0,CHECKVALVER_R0  ; basically  checks vertucal four character in column 
+	LD	R1,CHECKVALVER_R1
+	LD	R2,CHECKVALVER_R2
+	LD	R3,CHECKVALVER_R3
+	LD	R5,CHECKVALVER_R5
+	LD	R6,CHECKVALVER_R6
+	LD	R7,CHECKVALVER_R7   
+	RET
+CHECKVALVER_R0	.blkw	1
+CHECKVALVER_R1	.blkw	1
+CHECKVALVER_R2	.blkw	1  
+CHECKVALVER_R3	.blkw	1
+CHECKVALVER_R5	.blkw	1
+CHECKVALVER_R6	.blkw	1
+CHECKVALVER_R7	.blkw	1
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;	CHECK_DIAGONALS						;
+;	description:	checks diagonals by calling 		;
+;			CHECK_D1 & CHECK_D2.			;
+;	inputs:		R6 has the column of the last move.	;
+;			R5 has the row of the last move.	;
+;	outputs:	R4 has  0, if not winning move,		;
+;				1, otherwise.			;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;These routines do the horizontal check, vertical check, and diagonal checks 
+;;;;respectively. For each of these routines: 
+;;;;Inputs: R6 is the column of the last move, R5 is the row of the last move. 
+;;;;Outputs: R4 has 0 if not winning move, or 1 if winning move. ;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+CHECK_DIAGONALS
+	ST	R0,CHECKD_R0
+	ST	R1,CHECKD_R1
+	ST	R2,CHECKD_R2
+	ST	R3,CHECKD_R3
+	ST	R5,CHECKD_R5
+	ST	R6,CHECKD_R6
+	ST	R7,CHECKD_R7
+
+	AND	R1,R1,#0
+	ADD	R1,R1,#-3
+	LD	R2,BOARD_PTR
+	ADD	R5,R5,#-1
+GCHECKR2
+	BRz	LINE13
+	ADD	R2,R2,#7
+	ADD	R5,R5,#-1
+	BRnzp	GCHECKR2
+
+LINE13	ADD	R2,R2,R6
+	ADD	R2,R2,#-1
+	LDR	R3,R2,#0
+	NOT	R3,R3		
+	ADD	R3,R3,#1
+	
+	JSR	CHECK_D1
+	ADD	R4,R4,#0
+	BRp	FINCHECKDIGO
+	JSR	CHECK_D2
+
+FINCHECKDIGO
+	LD	R0,CHECKD_R0
+	LD	R1,CHECKD_R1
+	LD	R2,CHECKD_R2
+	LD	R3,CHECKD_R3
+	LD	R5,CHECKD_R5
+	LD	R6,CHECKD_R6
+	LD	R7,CHECKD_R7
+	RET
+CHECKD_R0	.blkw	1
+CHECKD_R1	.blkw	1
+CHECKD_R2	.blkw	1
+CHECKD_R3	.blkw	1
+CHECKD_R5	.blkw	1
+CHECKD_R6	.blkw	1
+CHECKD_R7	.blkw	1
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;	CHECK_D1						;
+;	description:	1st diagonal check.			;
+;	inputs:		R6 has the column of the last move.	;
+;			R5 has the row of the last move.	;
+;	outputs:	R4 has  0, if not winning move,		;
+;				1, otherwise.			;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;These routines do the horizontal check, vertical check, and diagonal checks 
+;;;;respectively. For each of these routines: 
+;;;;Inputs: R6 is the column of the last move, R5 is the row of the last move. 
+;;;;Outputs: R4 has 0 if not winning move, or 1 if winning move. ;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+CHECK_D1	
+	ST	R0,CHECKD1_R0
+	ST	R1,CHECKD1_R1
+	ST	R2,CHECKD1_R2
+	ST	R3,CHECKD1_R3
+	ST	R5,CHECKD1_R5
+	ST	R6,CHECKD1_R6
+	ST	R7,CHECKD1_R7
+
+	ADD	R7,R2,#0	; basically checks tokens from upper left to bottom right
+LINE14	LDR	R4,R7,#8
+	ADD	R4,R4,R3
+	BRnp	PATT3
+	ADD	R7,R7,#8
+	ADD	R1,R1,#1
+	BRz	CHDGWIN1
+	BRnzp	LINE14
+PATT3
+	ADD	R7,R2,#0	
+LINE15	LDR	R4,R7,#-8
+	ADD	R4,R4,R3
+	BRnp	CHDGNOWIN1
+	ADD	R7,R7,#-8
+	ADD	R1,R1,#1
+	BRz	CHDGWIN1
+	BRnzp	LINE15
+
+CHDGNOWIN1
+	AND	R4,R4,#0
+	BRnzp	FIN1CHDIG1
+
+CHDGWIN1
+	AND	R4,R4,#0
+	ADD	R4,R4,#1	
+FIN1CHDIG1
+	LD	R0,CHECKD1_R0
+	LD	R1,CHECKD1_R1
+	LD	R2,CHECKD1_R2
+	LD	R3,CHECKD1_R3
+	LD	R5,CHECKD1_R5
+	LD	R6,CHECKD1_R6
+	LD	R7,CHECKD1_R7
+	RET
+CHECKD1_R0	.blkw	1
+CHECKD1_R1	.blkw	1
+CHECKD1_R2	.blkw	1
+CHECKD1_R3	.blkw	1
+CHECKD1_R5	.blkw	1
+CHECKD1_R6	.blkw	1
+CHECKD1_R7	.blkw	1
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;	CHECK_D2						;
+;	description:	2nd diagonal check.			;
+;	inputs:		R6 has the column of the last move.	;
+;			R5 has the row of the last move.	;
+;	outputs:	R4 has  0, if not winning move,		;
+;				1, otherwise.			;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;These routines do the horizontal check, vertical check, and diagonal checks 
+;;;;respectively. For each of these routines: 
+;;;;Inputs: R6 is the column of the last move, R5 is the row of the last move. 
+;;;;Outputs: R4 has 0 if not winning move, or 1 if winning move. ;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+CHECK_D2	
+
+	ST	R0,CHECKD2_R0
+	ST	R1,CHECKD2_R1
+	ST	R2,CHECKD2_R2
+	ST	R3,CHECKD2_R3
+	ST	R5,CHECKD2_R5
+	ST	R6,CHECKD2_R6
+	ST	R7,CHECKD2_R7
+	
+	ADD	R7,R2,#0	; basically checks tokens from upper right to bottom left
+LINE16	LDR	R4,R7,#6
+	ADD	R4,R4,R3
+	BRnp	PATT4
+	ADD	R7,R7,#6
+	ADD	R1,R1,#1
+	BRz	CHDGWIN2
+	BRnzp	LINE16
+PATT4
+	ADD	R7,R2,#0	
+LINE17	LDR	R4,R7,#-6
+	ADD	R4,R4,R3
+	BRnp	CHDGWNOWIN2
+	ADD	R7,R7,#-6
+	ADD	R1,R1,#1
+	BRz	CHDGWIN2
+	BRnzp	LINE17
+
+CHDGWNOWIN2              ; basically  diagonal win check 
+	AND	R4,R4,#0
+	BRnzp	FINCHDG2
+
+CHDGWIN2
+	AND	R4,R4,#0
+	ADD	R4,R4,#1	
+FINCHDG2
+	LD	R0,CHECKD2_R0
+	LD	R1,CHECKD2_R1
+	LD	R2,CHECKD2_R2
+	LD	R3,CHECKD2_R3
+	LD	R5,CHECKD2_R5
+	LD	R6,CHECKD2_R6
+	LD	R7,CHECKD2_R7
+	RET
+CHECKD2_R0	.blkw	1  
+CHECKD2_R1	.blkw	1
+CHECKD2_R2	.blkw	1
+CHECKD2_R3	.blkw	1
+CHECKD2_R5	.blkw	1
+CHECKD2_R6	.blkw	1
+CHECKD2_R7	.blkw	1
+
+.END
